@@ -13,10 +13,11 @@ using Microsoft.Extensions.Options;
 using WebIdentityAula.Models;
 using WebIdentityAula.Models.AccountViewModels;
 using WebIdentityAula.Services;
+using WebIdentityAula.Token;
 
 namespace WebIdentityAula.Controllers
 {
-    [Authorize]
+    //[Authorize]
     [Route("[controller]/[action]")]
     public class AccountController : Controller
     {
@@ -53,8 +54,8 @@ namespace WebIdentityAula.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
+        //[ValidateAntiForgeryToken]
+        public async Task<IActionResult> Login([FromBody] LoginViewModel model, string returnUrl = null)
         {
             ViewData["ReturnUrl"] = returnUrl;
             if (ModelState.IsValid)
@@ -64,8 +65,16 @@ namespace WebIdentityAula.Controllers
                 var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("User logged in.");
-                    return RedirectToLocal(returnUrl);
+                    var token = new TokenJWTBuilder()
+                        .AddSecurityKey(JwtSecurityKey.Create("Secret_Key-12345678"))
+                        .AddSubject("Empresa E-Commerce")
+                        .AddIssuer("Teste.Securiry.Bearer")
+                        .AddAudience("Teste.Securiry.Bearer")
+                        .AddClaim("UsuarioAPINumero", "1")
+                        .AddExpiry(5)
+                        .Builder();
+                    var user = await _userManager.GetUserAsync(User);
+                    return Ok(token.value);
                 }
                 if (result.RequiresTwoFactor)
                 {
